@@ -27,6 +27,7 @@
 #include "wifi_conf.h"    /* WiFi series APIs */
 #include "lwip_netconf.h" /* LwIP_GetIP() */
 #include "srtp.h"
+#include "gpio_api.h"     /* GPIO APIs */
 
 #include "demo_config.h"
 #include "app_common.h"
@@ -35,6 +36,7 @@
 
 AppContext_t appContext;
 AppMediaSourcesContext_t appMediaSourceContext;
+gpio_t button_gpio;  // Button GPIO object
 
 static void Master_Task( void * pParameter );
 
@@ -45,6 +47,21 @@ static int32_t OnMediaSinkHook( void * pCustom,
                                 MediaFrame_t * pFrame );
 static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
                                          AppMediaSourcesContext_t * pAppMediaSourceContext );
+
+static void ButtonTest_Task( void * pParameter )
+{
+    int button_state, last_state = 1;
+    
+    while(1) {
+        button_state = gpio_read(&button_gpio);
+        if (button_state != last_state) {
+            printf("Button %s (state: %d)\n", 
+                   button_state ? "Released" : "Pressed", button_state);
+            last_state = button_state;
+        }
+        vTaskDelay(pdMS_TO_TICKS(50)); // 50ms polling
+    }
+}
 
 static int32_t InitTransceiver( void * pMediaCtx,
                                 TransceiverTrackKind_t trackKind,
@@ -171,6 +188,15 @@ static void Master_Task( void * pParameter )
     LogInfo( ( "Start Master_Task." ) );
 
     ret = AppCommon_Init( &appContext, InitTransceiver, &appMediaSourceContext );
+
+    // Initialize Button GPIO (PA_2)
+    gpio_init(&button_gpio, PA_2);     // Initialize PA_2 for button
+    gpio_dir(&button_gpio, PIN_INPUT);  // Set as input
+    gpio_mode(&button_gpio, PullUp);    // Enable pull-up resistor
+    printf("Button GPIO initialized\n");
+    
+    // Start button test task
+    xTaskCreate(ButtonTest_Task, "ButtonTest", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);
 
     if( ret == 0 )
     {
