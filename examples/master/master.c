@@ -52,12 +52,22 @@ static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
 static void ButtonTest_Task( void * pParameter )
 {
     int button_state, last_state = 1;
+    bool mqtt_initialized = false;
     
     while(1) {
         button_state = gpio_read(&button_gpio);
         if (button_state != last_state) {
             if (button_state == 0) {  // Button pressed (active low with pull-up)
                 printf("🔔 Doorbell button pressed!\n");
+                
+                // Lazy MQTT initialization after WebRTC startup
+                if (!mqtt_initialized) {
+                    printf("MQTT lazy initialization after WebRTC startup...\n");
+                    if (mqtt_doorbell_init() == 0) {
+                        mqtt_initialized = true;
+                    }
+                }
+                
                 MQTT_SendDoorbellRing();
             } else {
                 printf("Button released\n");
@@ -200,8 +210,7 @@ static void Master_Task( void * pParameter )
     gpio_mode(&button_gpio, PullUp);    // Enable pull-up resistor
     printf("Button GPIO initialized\n");
     
-    // Initialize MQTT for doorbell functionality
-    MQTT_Init();
+    // MQTT will be initialized on first button press after WebRTC is ready
     
     // Start button test task
     xTaskCreate(ButtonTest_Task, "ButtonTest", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);

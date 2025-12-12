@@ -1,0 +1,6 @@
+#ifndef CORE_MQTT_CONFIG_H
+#define CORE_MQTT_CONFIG_H
+
+#define MQTT_DO_NOT_USE_CUSTOM_CONFIG    1
+
+#endif /* CORE_MQTT_CONFIG_H */

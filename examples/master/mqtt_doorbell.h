@@ -7,7 +7,7 @@
  * @brief Initialize MQTT client for doorbell functionality
  * @return 0 on success, -1 on failure
  */
-int32_t MQTT_Init(void);
+int32_t mqtt_doorbell_init(void);
 
 /**
  * @brief Send doorbell ring event via MQTT
