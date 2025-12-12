@@ -33,6 +33,7 @@
 #include "app_common.h"
 #include "app_media_source.h"
 #include "logging.h"
+#include "mqtt_doorbell.h"
 
 AppContext_t appContext;
 AppMediaSourcesContext_t appMediaSourceContext;
@@ -55,8 +56,12 @@ static void ButtonTest_Task( void * pParameter )
     while(1) {
         button_state = gpio_read(&button_gpio);
         if (button_state != last_state) {
-            printf("Button %s (state: %d)\n", 
-                   button_state ? "Released" : "Pressed", button_state);
+            if (button_state == 0) {  // Button pressed (active low with pull-up)
+                printf("🔔 Doorbell button pressed!\n");
+                MQTT_SendDoorbellRing();
+            } else {
+                printf("Button released\n");
+            }
             last_state = button_state;
         }
         vTaskDelay(pdMS_TO_TICKS(50)); // 50ms polling
@@ -194,6 +199,9 @@ static void Master_Task( void * pParameter )
     gpio_dir(&button_gpio, PIN_INPUT);  // Set as input
     gpio_mode(&button_gpio, PullUp);    // Enable pull-up resistor
     printf("Button GPIO initialized\n");
+    
+    // Initialize MQTT for doorbell functionality
+    MQTT_Init();
     
     // Start button test task
     xTaskCreate(ButtonTest_Task, "ButtonTest", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);
