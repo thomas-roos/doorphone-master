@@ -40,3 +40,6 @@
 [submodule "libraries/components/amazon-kinesis-video-streams-dcep"]
 	path = libraries/components/amazon-kinesis-video-streams-dcep
 	url = https://github.com/awslabs/amazon-kinesis-video-streams-dcep.git
+[submodule "libraries/coreMQTT"]
+	path = libraries/coreMQTT
+	url = https://github.com/FreeRTOS/coreMQTT
