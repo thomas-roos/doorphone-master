@@ -66,7 +66,7 @@ extern int max_skb_buf_num;
 * Video type  : H264/HEVC
 *****************************************************************************/
 #define MEDIA_PORT_V1_CHANNEL 0
-#define MEDIA_PORT_V1_RESOLUTION VIDEO_HD
+#define MEDIA_PORT_V1_RESOLUTION VIDEO_VGA
 #define MEDIA_PORT_V1_FPS 30
 #define MEDIA_PORT_V1_GOP 30
 #define MEDIA_PORT_V1_BPS 512 * 1024

@@ -33,6 +33,7 @@
 #include "app_common.h"
 #include "networking_utils.h"
 #include "string_utils.h"
+#include "gpio_api.h"
 #if METRIC_PRINT_ENABLED
 #include "metric.h"
 #endif
@@ -98,6 +99,18 @@
 extern int crypto_init( void );
 extern int platform_set_malloc_free( void * ( *malloc_func )( size_t ),
                                      void ( * free_func )( void * ) );
+
+static gpio_t door_gpio;  // Door control GPIO
+
+static void setup_door_gpio(void)
+{
+    gpio_init(&door_gpio, PF_5);        // Initialize PF_5 for door control
+    gpio_dir(&door_gpio, PIN_OUTPUT);    // Set as output
+    gpio_mode(&door_gpio, PullNone);     // No pull-up/pull-down
+    gpio_write(&door_gpio, 0);           // Initially turn off
+    printf("Door control GPIO initialized\n");
+}
+
 static void platform_init( void );
 static void wifi_common_init( void );
 
@@ -1529,7 +1542,19 @@ static void OnDataChannelMessage( PeerConnectionDataChannel_t * pDataChannel,
                    pDataChannel->ucDataChannelName,
                    ( int ) pMessageLen, pMessage ) );
 
-        sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) ? ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
+        // Check for open door command
+        if( strstr((char*)pMessage, "\"action\":\"open_door\"") != NULL )
+        {
+            printf("🚪 Opening door via GPIO!\n");
+            gpio_write(&door_gpio, 1);  // Activate door control
+            vTaskDelay(pdMS_TO_TICKS(1000));  // Keep active for 1 second
+            gpio_write(&door_gpio, 0);  // Deactivate
+            sprintf( ucSendMessage, "Door opened successfully" );
+        }
+        else
+        {
+            sprintf( ucSendMessage, "Received %ld bytes, ECHO: %.*s", ( long int ) pMessageLen, ( int ) ( pMessageLen > ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) ? ( DEFAULT_DATA_CHANNEL_ON_MESSAGE_BUFFER_SIZE - 128 ) : pMessageLen ), pMessage );
+        }
         retStatus = PeerConnectionSCTP_DataChannelSend( pDataChannel, 0U, ( uint8_t * ) ucSendMessage, strlen( ucSendMessage ) );
     }
 
@@ -1574,6 +1599,8 @@ int AppCommon_Init( AppContext_t * pAppContext,
     if( ret == 0 )
     {
         platform_init();
+
+        setup_door_gpio();  // Initialize door control GPIO
 
         memset( pAppContext, 0, sizeof( AppContext_t ) );
         memset( &sslCreds, 0, sizeof( SSLCredentials_t ) );
