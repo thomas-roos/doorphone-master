@@ -40,6 +40,8 @@ AppMediaSourcesContext_t appMediaSourceContext;
 gpio_t button_gpio;  // Button GPIO object
 
 static void Master_Task( void * pParameter );
+static void ButtonTest_Task( void * pParameter );
+static void MqttKeepAlive_Task( void * pParameter );
 
 static int32_t InitTransceiver( void * pMediaCtx,
                                 TransceiverTrackKind_t trackKind,
@@ -49,25 +51,24 @@ static int32_t OnMediaSinkHook( void * pCustom,
 static int32_t InitializeAppMediaSource( AppContext_t * pAppContext,
                                          AppMediaSourcesContext_t * pAppMediaSourceContext );
 
+static void MqttKeepAlive_Task( void * pParameter )
+{
+    while(1) {
+        // Send MQTT ping every 30 seconds to keep connection alive
+        vTaskDelay(pdMS_TO_TICKS(30000));
+        mqtt_doorbell_ping();
+    }
+}
+
 static void ButtonTest_Task( void * pParameter )
 {
     int button_state, last_state = 1;
-    bool mqtt_initialized = false;
     
     while(1) {
         button_state = gpio_read(&button_gpio);
         if (button_state != last_state) {
             if (button_state == 0) {  // Button pressed (active low with pull-up)
                 printf("🔔 Doorbell button pressed!\n");
-                
-                // Lazy MQTT initialization after WebRTC startup
-                if (!mqtt_initialized) {
-                    printf("MQTT lazy initialization after WebRTC startup...\n");
-                    if (mqtt_doorbell_init() == 0) {
-                        mqtt_initialized = true;
-                    }
-                }
-                
                 MQTT_SendDoorbellRing();
             } else {
                 printf("Button released\n");
@@ -210,7 +211,15 @@ static void Master_Task( void * pParameter )
     gpio_mode(&button_gpio, PullUp);    // Enable pull-up resistor
     printf("Button GPIO initialized\n");
     
-    // MQTT will be initialized on first button press after WebRTC is ready
+    // Initialize MQTT during startup
+    printf("Initializing MQTT during startup...\n");
+    if (mqtt_doorbell_init() == 0) {
+        printf("MQTT initialized successfully\n");
+        // Start MQTT keep-alive task
+        xTaskCreate(MqttKeepAlive_Task, "MqttKeepAlive", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);
+    } else {
+        printf("MQTT initialization failed\n");
+    }
     
     // Start button test task
     xTaskCreate(ButtonTest_Task, "ButtonTest", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);

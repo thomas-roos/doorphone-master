@@ -15,4 +15,10 @@ int32_t mqtt_doorbell_init(void);
  */
 int32_t MQTT_SendDoorbellRing(void);
 
+/**
+ * @brief Send MQTT ping to keep connection alive
+ * @return 0 on success, -1 on failure
+ */
+int32_t mqtt_doorbell_ping(void);
+
 #endif /* MQTT_DOORBELL_H */

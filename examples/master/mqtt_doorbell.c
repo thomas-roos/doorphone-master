@@ -136,6 +136,23 @@ int32_t MQTT_SendDoorbellRing(void) {
     return 0;
 }
 
+int32_t mqtt_doorbell_ping(void) {
+    if (!mqttConnected) {
+        printf("MQTT not connected - cannot ping\n");
+        return -1;
+    }
+    
+    MQTTStatus_t status = MQTT_Ping(&mqttContext);
+    if (status == MQTTSuccess) {
+        printf("MQTT ping sent successfully\n");
+        return 0;
+    } else {
+        printf("MQTT ping failed: %d\n", status);
+        mqttConnected = false;  // Mark as disconnected on failure
+        return -1;
+    }
+}
+
 void mqtt_doorbell_cleanup(void) {
     MQTT_Disconnect(&mqttContext);
     TLS_FreeRTOS_Disconnect(&tlsContext);
